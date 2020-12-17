@@ -2,14 +2,18 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Media.Imaging;
 using BlitFlashNet.GitHubApi;
 using BlitFlashNet.Structures;
+using BlitFlashNet.Util;
 
 namespace BlitFlashNet.ViewModels
 {
@@ -22,6 +26,19 @@ namespace BlitFlashNet.ViewModels
         private GitHubRelease release = null;
 
         private GitHubReleaseAsset targetAsset = null;
+
+        private readonly RelayCommand DownloadFirmwareCommand = null;
+
+        private readonly RelayCommand FlashFirmwareCommand = null;
+
+        private readonly string DownloadPath = @$"{Environment.CurrentDirectory}\release.zip";
+
+        private readonly string firmwarePath = @$"{Environment.CurrentDirectory}\bin\firmware.dfu";
+
+
+        private int percentageComplete = 0;
+
+        private Visibility progressBarVisible = Visibility.Collapsed;
 
         public GitHubReleaseAsset TargetAsset
         {
@@ -43,9 +60,57 @@ namespace BlitFlashNet.ViewModels
             }
         }
 
+        public RelayCommand DownloadFirmwareCommand1 => DownloadFirmwareCommand;
+
+        public RelayCommand FlashFirmwareCommand1 => FlashFirmwareCommand;
+
+        public int PercentageComplete
+        {
+            get => percentageComplete;
+            set
+            {
+                percentageComplete = value; 
+                this.OnPropertyChanged();
+            }
+        }
+
+        public Visibility ProgressBarVisible
+        {
+            get => progressBarVisible;
+            set
+            {
+                progressBarVisible = value;
+                this.OnPropertyChanged();
+            }
+        }
+
         public AppViewModel()
         {
+            this.DownloadFirmwareCommand = new RelayCommand(this.DownloadFirmware);
+
+            this.FlashFirmwareCommand = new RelayCommand(this.FlashFirmware);
+
             GetLatestFirmwareAsync();
+        }
+
+        private void FlashFirmware(object obj)
+        {
+            this.FlashFirmware();
+        }
+
+        private void DownloadFirmware(object obj)
+        {
+            if (File.Exists(DownloadPath))
+            {
+                File.Delete(DownloadPath);
+            }
+
+            if (this.targetAsset != null)
+            {
+                this.ProgressBarVisible = Visibility.Visible;
+
+                FileDownLoader.DownloadFile(this.targetAsset.DownloadUrl, DownloadPath, FirmwareDownloadProgressChanged, FirmwareDownloadCompleted);
+            }
         }
 
         private async Task GetLatestFirmwareAsync()
@@ -66,43 +131,45 @@ namespace BlitFlashNet.ViewModels
 
         private void FlashFirmware()
         {
-            Process p = new Process();
-            p.StartInfo.RedirectStandardOutput = true;
+            if (File.Exists(firmwarePath))
+            {
+                Process p = new Process();
+                p.StartInfo.RedirectStandardOutput = true;
 
-            // Start a process with the filename or path with filename e.g. "cmd". Please note the 
-            //using statemant
-            p.StartInfo =
-                new ProcessStartInfo(@"C:\Program Files (x86)\STMicroelectronics\Software\DfuSe v3.0.6\Bin\DfuSeCommand.exe",
-                    @" -c -d --fn ""firmware.dfu""");
-            // add the arguments - Note add "/c" if you want to carry out tge  argument in cmd and  
-            // terminate
-            // Allows to raise events
-            p.EnableRaisingEvents = true;
-            //hosted by the application itself to not open a black cmd window
-            //p.StartInfo.UseShellExecute = false;
-            //p.StartInfo.CreateNoWindow = true;
-            // Eventhander for data
-            p.OutputDataReceived += OnOutputData;
-            // Eventhandler for error
-            p.ErrorDataReceived += OnErrorDataReceived;
-            // Eventhandler wich fires when exited
-            p.Exited += OnExited;
+                // Start a process with the filename or path with filename e.g. "cmd". Please note the 
+                //using statemant
+                p.StartInfo =
+                    new ProcessStartInfo(
+                        @$"C:\Program Files (x86)\STMicroelectronics\Software\DfuSe v3.0.6\Bin\DfuSeCommand.exe",
+                        $@" -c -d --fn ""{firmwarePath}""");
 
-            // Starts the process
-            p.Start();
-            //read the output before you wait for exit
-            //myProcess.BeginOutputReadLine();
+                // Allows to raise events
+                p.EnableRaisingEvents = true;
+                //p.StartInfo.UseShellExecute = false;
+                p.StartInfo.CreateNoWindow = true;
+                // Eventhander for data
+                p.OutputDataReceived += OnOutputData;
+                // Eventhandler for error
+                p.ErrorDataReceived += OnErrorDataReceived;
+                // Eventhandler wich fires when exited
+                p.Exited += OnExited;
 
-            //Synchronously read the standard output of the spawned process.
-            //StreamReader reader = p.StandardOutput;
-            //string output = reader.ReadToEnd();
+                // Starts the process
+                p.Start();
 
-            // Write the redirected output to this application's window.
-            //Console.WriteLine(output);
+                //StreamReader reader = p.StandardOutput;
 
-            // wait for the finish - this will block (leave this out if you dont want to wait for 
-            // it, so it runs without blocking)
-            //p.WaitForExit();
+                //p.BeginOutputReadLine();
+
+                //string output = reader.ReadToEnd();
+
+                //Console.WriteLine(output);
+
+            }
+            else
+            {
+                MessageBox.Show("Firmware not found");
+            }
         }
 
         private void OnOutputData(object sender, EventArgs e)
@@ -114,13 +181,12 @@ namespace BlitFlashNet.ViewModels
         private void OnErrorDataReceived(object sender, DataReceivedEventArgs e)
         {
             Trace.WriteLine(e.Data);
-            //do something with your exception
         }
 
         // Handle Exited event and display process information.
         private void OnExited(object sender, System.EventArgs e)
         {
-            Trace.WriteLine("Process exited");
+            MessageBox.Show("Firmware upload complete");
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -128,6 +194,29 @@ namespace BlitFlashNet.ViewModels
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        void FirmwareDownloadProgressChanged(object sender, DownloadProgressChangedEventArgs e)
+        {
+
+            var percentageDownloaded = e.BytesReceived / e.TotalBytesToReceive * 100;
+            PercentageComplete = Convert.ToInt32(percentageDownloaded);
+
+        }
+        void FirmwareDownloadCompleted(object sender, AsyncCompletedEventArgs e)
+        {
+            this.ProgressBarVisible = Visibility.Collapsed;
+            if (File.Exists(DownloadPath))
+            {
+                ZipFile.ExtractToDirectory(DownloadPath, Environment.CurrentDirectory, true);
+                if (File.Exists(firmwarePath))
+                {
+                    MessageBox.Show("Downloaded Firmware. Ready to Flash");
+                    return;
+                }
+            }
+
+            MessageBox.Show("Failed to download firmware");
         }
     }
 }
