@@ -2,7 +2,7 @@
 
 Windows App for updating and flashing 32Blit firmware.
 
-Requires .Net5.
+Requires .Net5. and DfuSeDemo installed to its default location.
 
 Needs some tidying but the app works. 
 
