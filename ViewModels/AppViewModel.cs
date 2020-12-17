@@ -23,6 +23,10 @@ namespace BlitFlashNet.ViewModels
 
         private string repo = "32blit-beta";
 
+        private string dFusePath = $@"C:\Program Files (x86)\STMicroelectronics\Software\DfuSe v3.0.6\Bin\DfuSeCommand.exe";
+
+        private string dfuseFilename = "DfuSeCommand.exe";
+
         private GitHubRelease release = null;
 
         private GitHubReleaseAsset targetAsset = null;
@@ -34,6 +38,13 @@ namespace BlitFlashNet.ViewModels
         private readonly string DownloadPath = @$"{Environment.CurrentDirectory}\release.zip";
 
         private readonly string firmwarePath = @$"{Environment.CurrentDirectory}\bin\firmware.dfu";
+
+        private List<string> possibleDfuseLocations = new List<string>() { $@"{Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86)}\STMicroelectronics\Software\", $@"{Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles)}\STMicroelectronics\Software\" };
+
+        private bool dfuseFound = false;
+
+        //private string dfuseInstallLocation =
+        //    System.Environment.GetFolderPath(System.Environment.SpecialFolder.ProgramFiles) + @"\STMicroelectronics\Software\";
 
 
         private int percentageComplete = 0;
@@ -84,13 +95,72 @@ namespace BlitFlashNet.ViewModels
             }
         }
 
+        public bool DfuseFound
+        {
+            get => dfuseFound;
+            set
+            {
+                dfuseFound = value; 
+                this.OnPropertyChanged();
+            }
+        }
+
         public AppViewModel()
         {
+            this.TryFindDfuse();
+
             this.DownloadFirmwareCommand = new RelayCommand(this.DownloadFirmware);
 
             this.FlashFirmwareCommand = new RelayCommand(this.FlashFirmware);
 
             GetLatestFirmwareAsync();
+        }
+
+        private void TryFindDfuse()
+        {
+            foreach (var possibleDfuseLocation in this.possibleDfuseLocations)
+            {
+                if (Directory.Exists(possibleDfuseLocation))
+                {
+                    var path = this.SearchForFileInDirectoy(possibleDfuseLocation, dfuseFilename);
+
+                    if (path != null)
+                    {
+                        this.dFusePath = path;
+                        this.DfuseFound = true;
+                    }
+
+                    return;
+                }
+            }
+        }
+
+        private string SearchForFileInDirectoy(string possibleDfuseLocation, string filename)
+        {
+            var path = $"{possibleDfuseLocation}{filename}";
+
+            if (File.Exists(path))
+            {
+                return path;
+            }
+            else
+            {
+               var directories = Directory.GetDirectories(possibleDfuseLocation);
+
+               if (directories != null)
+               {
+                   foreach (var directory in directories)
+                   {
+                      var foundPath = this.SearchForFileInDirectoy(directory + "\\", filename);
+                      if (foundPath != null)
+                      {
+                          return foundPath;
+                      }
+                   }
+               }
+            }
+
+            return null;
         }
 
         private void FlashFirmware(object obj)
@@ -140,7 +210,7 @@ namespace BlitFlashNet.ViewModels
                 //using statemant
                 p.StartInfo =
                     new ProcessStartInfo(
-                        @$"C:\Program Files (x86)\STMicroelectronics\Software\DfuSe v3.0.6\Bin\DfuSeCommand.exe",
+                        dFusePath,
                         $@" -c -d --fn ""{firmwarePath}""");
 
                 // Allows to raise events

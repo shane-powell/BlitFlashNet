@@ -29,6 +29,8 @@
                 <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="Auto"></RowDefinition>
+                <RowDefinition Height="Auto"></RowDefinition>
+
                 <RowDefinition Height="*"></RowDefinition>
                 <RowDefinition Height="*"></RowDefinition>
                 <RowDefinition Height="*"></RowDefinition>
@@ -45,16 +47,22 @@
             <TextBlock Text="Author"  Grid.Column="0" Grid.Row="2" Style="{StaticResource FieldNameStyle}"></TextBlock>
             <TextBlock Text="Date"  Grid.Column="0" Grid.Row="3" Style="{StaticResource FieldNameStyle}"></TextBlock>
 
+            <TextBlock Text="DfuSe Found" Grid.Column="0" Grid.Row="4" Style="{StaticResource FieldNameStyle}"></TextBlock>
+
             <TextBlock Text="{Binding Release.TagName}" Grid.Column="1" Grid.Row="0" Style="{StaticResource FieldValueStyle}"></TextBlock>
             <TextBlock Text="{Binding TargetAsset.Name}" ToolTip="{Binding TargetAsset.DownloadUrl}"  Grid.Column="1" Grid.Row="1" Style="{StaticResource FieldValueStyle}"></TextBlock>
             <TextBlock Text="{Binding Release.Author.Login}"  Grid.Column="1" Grid.Row="2"  Style="{StaticResource FieldValueStyle}"></TextBlock>
 
             <TextBlock Text="{Binding TargetAsset.UpdatedDate}"  Grid.Column="1" Grid.Row="3"  Style="{StaticResource FieldValueStyle}"></TextBlock>
 
-            <Button Content="Download Firmware" Grid.Row="4" Margin="3" FontSize="16" FontWeight="Bold" VerticalAlignment="Top" Background="DarkSeaGreen" Command="{Binding DownloadFirmwareCommand1}"></Button>
-            <Button Content="Flash Firmware" Grid.Column="1" Grid.ColumnSpan="2" Grid.Row="4" Margin="3" FontSize="16" FontWeight="Bold" Background="DarkSalmon" HorizontalAlignment="left" VerticalAlignment="Top" Command="{Binding FlashFirmwareCommand1}"></Button>
+            <TextBlock Text="{Binding DfuseFound}" Foreground="Brown" FontWeight="Bold"  Grid.Column="1" Grid.Row="4"  Style="{StaticResource FieldValueStyle}"></TextBlock>
 
-            <StackPanel Orientation="Vertical" Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2">
+
+
+            <Button Content="Download Firmware" Grid.Row="5" Margin="3" FontSize="16" FontWeight="Bold" VerticalAlignment="Top" Background="DarkSeaGreen" Command="{Binding DownloadFirmwareCommand1}"></Button>
+            <Button Content="Flash Firmware" Grid.Column="1" Grid.ColumnSpan="2" Grid.Row="5" Margin="3" FontSize="16" FontWeight="Bold" Background="DarkSalmon" HorizontalAlignment="left" VerticalAlignment="Top" Command="{Binding FlashFirmwareCommand1}"></Button>
+
+            <StackPanel Orientation="Vertical" Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2">
                 <ProgressBar HorizontalAlignment="Left" Minimum="0" Maximum="0" Value="{Binding PercentageComplete}" Visibility="{Binding ProgressBarVisible}" Height="25" Width="300" Margin="3,10,3,3"></ProgressBar>
                 <TextBlock Text="Remember to put your device in DFU mode" FontSize="18" FontWeight="Bold" Margin="3,15,3,10" Foreground="DarkRed"></TextBlock>
                 <Image  Source="https://github.com/pimoroni/32blit-beta/raw/master/docs/resources/enter-dfu-mode.png"  Height="250" Margin="0,10,0,15"></Image>
