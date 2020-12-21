@@ -43,6 +43,12 @@ namespace BlitFlashNet.ViewModels
 
         private bool dfuseFound = false;
 
+        private bool isFlashing = false;
+
+        private bool interfaceEnabled = true;
+
+        private string flashOutput = string.Empty;
+
         //private string dfuseInstallLocation =
         //    System.Environment.GetFolderPath(System.Environment.SpecialFolder.ProgramFiles) + @"\STMicroelectronics\Software\";
 
@@ -101,6 +107,36 @@ namespace BlitFlashNet.ViewModels
             set
             {
                 dfuseFound = value; 
+                this.OnPropertyChanged();
+            }
+        }
+
+        public bool IsFlashing
+        {
+            get => isFlashing;
+            set
+            {
+                isFlashing = value; 
+                this.OnPropertyChanged();
+            }
+        }
+
+        public bool InterfaceEnabled
+        {
+            get => interfaceEnabled;
+            set
+            {
+                interfaceEnabled = value; 
+                this.OnPropertyChanged();
+            }
+        }
+
+        public string FlashOutput
+        {
+            get => flashOutput;
+            set
+            {
+                flashOutput = value; 
                 this.OnPropertyChanged();
             }
         }
@@ -177,6 +213,7 @@ namespace BlitFlashNet.ViewModels
 
             if (this.targetAsset != null)
             {
+                this.PercentageComplete = 0;
                 this.ProgressBarVisible = Visibility.Visible;
 
                 FileDownLoader.DownloadFile(this.targetAsset.DownloadUrl, DownloadPath, FirmwareDownloadProgressChanged, FirmwareDownloadCompleted);
@@ -185,55 +222,85 @@ namespace BlitFlashNet.ViewModels
 
         private async Task GetLatestFirmwareAsync()
         {
+            this.InterfaceEnabled = false;
 
-            Release = await GitHubApiConnector.GetLatestRelease(owner, repo);
-
-            if (release != null)
+            try
             {
-                //var assets = await GitHubApiConnector.GetReleaseAssets(release);
+                Release = await GitHubApiConnector.GetLatestRelease(owner, repo);
 
-                if (release.Assets != null)
+                if (release != null)
                 {
-                    TargetAsset = release.Assets.FirstOrDefault(a => a.Name.Contains("STM32.zip"));
+                    if (release.Assets != null)
+                    {
+                        TargetAsset = release.Assets.FirstOrDefault(a => a.Name.Contains("STM32.zip"));
+                    }
                 }
             }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.Message);
+            }
+            finally
+            {
+                this.InterfaceEnabled = true;
+            }
+
+           
         }
 
         private void FlashFirmware()
         {
             if (File.Exists(firmwarePath))
             {
-                Process p = new Process();
-                p.StartInfo.RedirectStandardOutput = true;
+                try
+                {
+                    this.FlashOutput = string.Empty;
+                    this.IsFlashing = true;
+                    this.InterfaceEnabled = false;
 
-                // Start a process with the filename or path with filename e.g. "cmd". Please note the 
-                //using statemant
-                p.StartInfo =
-                    new ProcessStartInfo(
-                        dFusePath,
-                        $@" -c -d --fn ""{firmwarePath}""");
+                    Process p = new Process();
+                    p.StartInfo.RedirectStandardOutput = true;
 
-                // Allows to raise events
-                p.EnableRaisingEvents = true;
-                //p.StartInfo.UseShellExecute = false;
-                p.StartInfo.CreateNoWindow = true;
-                // Eventhander for data
-                p.OutputDataReceived += OnOutputData;
-                // Eventhandler for error
-                p.ErrorDataReceived += OnErrorDataReceived;
-                // Eventhandler wich fires when exited
-                p.Exited += OnExited;
+                    // Start a process with the filename or path with filename e.g. "cmd". Please note the 
+                    //using statemant
+                    p.StartInfo =
+                        new ProcessStartInfo(
+                            dFusePath,
+                            $@" -c -d --fn ""{firmwarePath}""");
 
-                // Starts the process
-                p.Start();
+                    p.StartInfo.RedirectStandardOutput = true;
+                    p.StartInfo.UseShellExecute = false;
 
-                //StreamReader reader = p.StandardOutput;
+                    // Allows to raise events
+                    p.EnableRaisingEvents = true;
+                    p.StartInfo.CreateNoWindow = true;
+                    // Eventhander for data
+                    p.OutputDataReceived += OnOutputData;
+                    // Eventhandler for error
+                    p.ErrorDataReceived += OnErrorDataReceived;
+                    // Eventhandler wich fires when exited
+                    p.Exited += OnExited;
 
-                //p.BeginOutputReadLine();
+                    // Starts the process
+                    p.Start();
 
-                //string output = reader.ReadToEnd();
+                    //StreamReader reader = p.StandardOutput;
 
-                //Console.WriteLine(output);
+                    p.BeginOutputReadLine();
+
+                    //string output = reader.ReadToEnd();
+
+                    //Console.WriteLine(output);
+                }
+                catch (Exception e)
+                {
+                    MessageBox.Show(e.Message);
+                }
+                finally
+                {
+                    this.InterfaceEnabled = true;
+                }
+
 
             }
             else
@@ -242,15 +309,15 @@ namespace BlitFlashNet.ViewModels
             }
         }
 
-        private void OnOutputData(object sender, EventArgs e)
+        private void OnOutputData(object sender, DataReceivedEventArgs e)
         {
-
+            this.FlashOutput += $"{Environment.NewLine}{e.Data}";
         }
 
         //Handle the error
         private void OnErrorDataReceived(object sender, DataReceivedEventArgs e)
         {
-            Trace.WriteLine(e.Data);
+            this.FlashOutput += $"{Environment.NewLine}{e.Data}";
         }
 
         // Handle Exited event and display process information.
@@ -269,7 +336,7 @@ namespace BlitFlashNet.ViewModels
         void FirmwareDownloadProgressChanged(object sender, DownloadProgressChangedEventArgs e)
         {
 
-            var percentageDownloaded = e.BytesReceived / e.TotalBytesToReceive * 100;
+            var percentageDownloaded = ((double)e.BytesReceived / e.TotalBytesToReceive) * 100;
             PercentageComplete = Convert.ToInt32(percentageDownloaded);
 
         }
