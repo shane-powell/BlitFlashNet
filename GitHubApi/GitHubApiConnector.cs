@@ -35,6 +35,28 @@ namespace BlitFlashNet.GitHubApi
 
             return null;
         }
+        public static async Task<List<GitHubRelease>> GetAllReleases(string owner, string repo)
+        {
+            try
+            {
+                client.DefaultRequestHeaders.Accept.Clear();
+                client.DefaultRequestHeaders.Accept.Add(
+                    new MediaTypeWithQualityHeaderValue("application/vnd.github.v3+json"));
+                client.DefaultRequestHeaders.Add("User-Agent", ".NET Foundation Repository Reporter");
+
+                var streamTask = client.GetStreamAsync($"https://api.github.com/repos/{owner}/{repo}/releases");
+                var releases = await JsonSerializer.DeserializeAsync<List<GitHubRelease>>(await streamTask);
+
+                return releases;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+
+            return null;
+        }
+
 
         public static async Task<List<GitHubReleaseAsset>> GetReleaseAssets(GitHubRelease release)
         {

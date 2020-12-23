@@ -28,7 +28,11 @@
                 <RowDefinition Height="Auto"></RowDefinition>
             </Grid.RowDefinitions>
 
-        <TextBlock Text="Latest Release" FontSize="20" FontWeight="Bold" Margin="3,30,3,3" HorizontalAlignment="Center" Grid.Row="0"></TextBlock>
+        <StackPanel Orientation="Horizontal" Margin="3,30,3,3" Grid.Row="0">
+                <TextBlock Text="Version" VerticalAlignment="Center" FontSize="20" FontWeight="Bold"  HorizontalAlignment="Center" Margin="3"></TextBlock>
+            <ComboBox VerticalAlignment="Center" VerticalContentAlignment="Center" MinWidth="150" Margin="3" ItemsSource="{Binding Releases}" DisplayMemberPath="TagName" SelectedValue="{Binding Release}"></ComboBox>
+        </StackPanel>
+        
         <Grid Grid.Row="1">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"></RowDefinition>
@@ -56,7 +60,7 @@
             <TextBlock Text="DfuSe Found" Grid.Column="0" Grid.Row="4" Style="{StaticResource FieldNameStyle}"></TextBlock>
 
             <TextBlock Text="{Binding Release.TagName}" Grid.Column="1" Grid.Row="0" Style="{StaticResource FieldValueStyle}"></TextBlock>
-            <TextBlock Text="{Binding TargetAsset.Name}" ToolTip="{Binding TargetAsset.DownloadUrl}"  Grid.Column="1" Grid.Row="1" Style="{StaticResource FieldValueStyle}"></TextBlock>
+            <TextBlock Text="{Binding TargetAsset.Name}" ToolTip="{Binding TargetAsset.DownloadUrl}"  Grid.Column="1" Grid.Row="1" Style="{StaticResource FieldValueStyle}" Width="300"></TextBlock>
             <TextBlock Text="{Binding Release.Author.Login}"  Grid.Column="1" Grid.Row="2"  Style="{StaticResource FieldValueStyle}"></TextBlock>
 
             <TextBlock Text="{Binding TargetAsset.UpdatedDate}"  Grid.Column="1" Grid.Row="3"  Style="{StaticResource FieldValueStyle}"></TextBlock>

@@ -19,15 +19,17 @@ namespace BlitFlashNet.ViewModels
 {
     public class AppViewModel : INotifyPropertyChanged
     {
-        private string owner = "Pimoroni";
+        private const string owner = "Pimoroni";
 
-        private string repo = "32blit-beta";
+        private const string repo = "32blit-beta";
 
-        private string dFusePath = $@"C:\Program Files (x86)\STMicroelectronics\Software\DfuSe v3.0.6\Bin\DfuSeCommand.exe";
+        private string dFusePath = @"C:\Program Files (x86)\STMicroelectronics\Software\DfuSe v3.0.6\Bin\DfuSeCommand.exe";
 
-        private string dfuseFilename = "DfuSeCommand.exe";
+        private const string dfuseFilename = "DfuSeCommand.exe";
 
         private GitHubRelease release = null;
+
+        private List<GitHubRelease> releases = null;
 
         private GitHubReleaseAsset targetAsset = null;
 
@@ -39,7 +41,7 @@ namespace BlitFlashNet.ViewModels
 
         private readonly string firmwarePath = @$"{Environment.CurrentDirectory}\bin\firmware.dfu";
 
-        private List<string> possibleDfuseLocations = new List<string>() { $@"{Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86)}\STMicroelectronics\Software\", $@"{Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles)}\STMicroelectronics\Software\" };
+        private readonly List<string> possibleDfuseLocations = new List<string>() { $@"{Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86)}\STMicroelectronics\Software\", $@"{Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles)}\STMicroelectronics\Software\" };
 
         private bool dfuseFound = false;
 
@@ -74,6 +76,19 @@ namespace BlitFlashNet.ViewModels
             {
                 release = value; 
                 this.OnPropertyChanged();
+
+                this.UpdateTargetAsset();
+            }
+        }
+
+        private void UpdateTargetAsset()
+        {
+            if (release != null)
+            {
+                if (release.Assets != null)
+                {
+                    TargetAsset = release.Assets.FirstOrDefault(a => a.Name.Contains("STM32.zip"));
+                }
             }
         }
 
@@ -141,6 +156,16 @@ namespace BlitFlashNet.ViewModels
             }
         }
 
+        public List<GitHubRelease> Releases
+        {
+            get => releases;
+            set
+            {
+                releases = value; 
+                this.OnPropertyChanged();
+            }
+        }
+
         public AppViewModel()
         {
             this.TryFindDfuse();
@@ -149,7 +174,8 @@ namespace BlitFlashNet.ViewModels
 
             this.FlashFirmwareCommand = new RelayCommand(this.FlashFirmware);
 
-            GetLatestFirmwareAsync();
+            //GetLatestFirmwareAsync();
+            GetAllFirmwareAsync();
         }
 
         private void TryFindDfuse()
@@ -226,6 +252,7 @@ namespace BlitFlashNet.ViewModels
 
             try
             {
+                
                 Release = await GitHubApiConnector.GetLatestRelease(owner, repo);
 
                 if (release != null)
@@ -244,8 +271,30 @@ namespace BlitFlashNet.ViewModels
             {
                 this.InterfaceEnabled = true;
             }
+        }
 
-           
+        private async Task GetAllFirmwareAsync()
+        {
+            this.InterfaceEnabled = false;
+
+            try
+            {
+
+                Releases = await GitHubApiConnector.GetAllReleases(owner, repo);
+
+                if (releases.Any())
+                {
+                    Release = Releases.FirstOrDefault();
+                }
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.Message);
+            }
+            finally
+            {
+                this.InterfaceEnabled = true;
+            }
         }
 
         private void FlashFirmware()
@@ -284,13 +333,7 @@ namespace BlitFlashNet.ViewModels
                     // Starts the process
                     p.Start();
 
-                    //StreamReader reader = p.StandardOutput;
-
                     p.BeginOutputReadLine();
-
-                    //string output = reader.ReadToEnd();
-
-                    //Console.WriteLine(output);
                 }
                 catch (Exception e)
                 {
