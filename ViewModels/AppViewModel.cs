@@ -19,6 +19,12 @@ namespace BlitFlashNet.ViewModels
 {
     public class AppViewModel : INotifyPropertyChanged
     {
+        public enum FlashTool
+        {
+            BlitTool,
+            DfuSe
+        }
+
         private const string owner = "Pimoroni";
 
         private const string repo = "32blit-beta";
@@ -39,7 +45,7 @@ namespace BlitFlashNet.ViewModels
 
         private readonly string DownloadPath = @$"{Environment.CurrentDirectory}\release.zip";
 
-        private readonly string firmwarePath = @$"{Environment.CurrentDirectory}\bin\firmware.dfu";
+        private readonly string dfuPath = @$"{Environment.CurrentDirectory}\bin\firmware.dfu";
 
         private readonly List<string> possibleDfuseLocations = new List<string>() { $@"{Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86)}\STMicroelectronics\Software\", $@"{Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles)}\STMicroelectronics\Software\" };
 
@@ -51,6 +57,10 @@ namespace BlitFlashNet.ViewModels
 
         private string flashOutput = string.Empty;
 
+        private CommandLineTools commandLineTools = null;
+
+        private FlashTool selectedFlashTool = FlashTool.BlitTool;
+
         //private string dfuseInstallLocation =
         //    System.Environment.GetFolderPath(System.Environment.SpecialFolder.ProgramFiles) + @"\STMicroelectronics\Software\";
 
@@ -58,6 +68,14 @@ namespace BlitFlashNet.ViewModels
         private int percentageComplete = 0;
 
         private Visibility progressBarVisible = Visibility.Collapsed;
+
+        public List<FlashTool> FlashTools
+        {
+            get
+            {
+                return Enum.GetValues(typeof(FlashTool)).Cast<FlashTool>().ToList<FlashTool>();
+            }
+        }
 
         public GitHubReleaseAsset TargetAsset
         {
@@ -166,6 +184,16 @@ namespace BlitFlashNet.ViewModels
             }
         }
 
+        public FlashTool SelectedFlashTool
+        {
+            get => selectedFlashTool;
+            set
+            {
+                selectedFlashTool = value; 
+                this.OnPropertyChanged();
+            }
+        }
+
         public AppViewModel()
         {
             this.TryFindDfuse();
@@ -173,6 +201,8 @@ namespace BlitFlashNet.ViewModels
             this.DownloadFirmwareCommand = new RelayCommand(this.DownloadFirmware);
 
             this.FlashFirmwareCommand = new RelayCommand(this.FlashFirmware);
+
+            this.commandLineTools = new CommandLineTools(this.ProcessCommandLineMessage, this.ProcessCommandLineFinished);
 
             //GetLatestFirmwareAsync();
             GetAllFirmwareAsync();
@@ -299,7 +329,9 @@ namespace BlitFlashNet.ViewModels
 
         private void FlashFirmware()
         {
-            if (File.Exists(firmwarePath))
+            var blitFlashPath = $@"{Environment.CurrentDirectory }\bin\firmware-update-{release.TagName}.blit";
+
+            if ((selectedFlashTool == FlashTool.DfuSe && File.Exists(dfuPath)) || selectedFlashTool == FlashTool.BlitTool && File.Exists(blitFlashPath))
             {
                 try
                 {
@@ -307,33 +339,15 @@ namespace BlitFlashNet.ViewModels
                     this.IsFlashing = true;
                     this.InterfaceEnabled = false;
 
-                    Process p = new Process();
-                    p.StartInfo.RedirectStandardOutput = true;
-
-                    // Start a process with the filename or path with filename e.g. "cmd". Please note the 
-                    //using statemant
-                    p.StartInfo =
-                        new ProcessStartInfo(
-                            dFusePath,
-                            $@" -c -d --fn ""{firmwarePath}""");
-
-                    p.StartInfo.RedirectStandardOutput = true;
-                    p.StartInfo.UseShellExecute = false;
-
-                    // Allows to raise events
-                    p.EnableRaisingEvents = true;
-                    p.StartInfo.CreateNoWindow = true;
-                    // Eventhander for data
-                    p.OutputDataReceived += OnOutputData;
-                    // Eventhandler for error
-                    p.ErrorDataReceived += OnErrorDataReceived;
-                    // Eventhandler wich fires when exited
-                    p.Exited += OnExited;
-
-                    // Starts the process
-                    p.Start();
-
-                    p.BeginOutputReadLine();
+                    switch (SelectedFlashTool)
+                    {
+                        case FlashTool.BlitTool:
+                            this.commandLineTools.RunCommandLineApp("cmd.exe", $@"/c 32blit flash flash --file {blitFlashPath}");
+                            break;
+                        case FlashTool.DfuSe:
+                            this.commandLineTools.RunCommandLineApp(dFusePath, $@" -c -d --fn ""{dfuPath}""");
+                            break;
+                    }
                 }
                 catch (Exception e)
                 {
@@ -352,19 +366,13 @@ namespace BlitFlashNet.ViewModels
             }
         }
 
-        private void OnOutputData(object sender, DataReceivedEventArgs e)
+        private void ProcessCommandLineMessage(string message)
         {
-            this.FlashOutput += $"{Environment.NewLine}{e.Data}";
-        }
-
-        //Handle the error
-        private void OnErrorDataReceived(object sender, DataReceivedEventArgs e)
-        {
-            this.FlashOutput += $"{Environment.NewLine}{e.Data}";
+            this.FlashOutput += $"{Environment.NewLine}{message}";
         }
 
         // Handle Exited event and display process information.
-        private void OnExited(object sender, System.EventArgs e)
+        private void ProcessCommandLineFinished()
         {
             MessageBox.Show("Firmware upload complete");
         }
@@ -389,7 +397,7 @@ namespace BlitFlashNet.ViewModels
             if (File.Exists(DownloadPath))
             {
                 ZipFile.ExtractToDirectory(DownloadPath, Environment.CurrentDirectory, true);
-                if (File.Exists(firmwarePath))
+                if (File.Exists(dfuPath))
                 {
                     MessageBox.Show("Downloaded Firmware. Ready to Flash");
                     return;
