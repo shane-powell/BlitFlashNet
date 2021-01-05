@@ -47,6 +47,8 @@ namespace BlitFlashNet.ViewModels
 
         private readonly string dfuPath = @$"{Environment.CurrentDirectory}\bin\firmware.dfu";
 
+        private readonly string unzipFolderPath = @$"{Environment.CurrentDirectory}\bin";
+
         private readonly List<string> possibleDfuseLocations = new List<string>() { $@"{Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86)}\STMicroelectronics\Software\", $@"{Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles)}\STMicroelectronics\Software\" };
 
         private bool dfuseFound = false;
@@ -204,6 +206,8 @@ namespace BlitFlashNet.ViewModels
 
             this.commandLineTools = new CommandLineTools(this.ProcessCommandLineMessage, null);
 
+            this.CleanUpFirmwareFiles();
+
             //GetLatestFirmwareAsync();
             GetAllFirmwareAsync();
         }
@@ -262,10 +266,7 @@ namespace BlitFlashNet.ViewModels
 
         private void DownloadFirmware(object obj)
         {
-            if (File.Exists(DownloadPath))
-            {
-                File.Delete(DownloadPath);
-            }
+            CleanUpFirmwareFiles();
 
             if (this.targetAsset != null)
             {
@@ -273,6 +274,33 @@ namespace BlitFlashNet.ViewModels
                 this.ProgressBarVisible = Visibility.Visible;
 
                 FileDownLoader.DownloadFile(this.targetAsset.DownloadUrl, DownloadPath, FirmwareDownloadProgressChanged, FirmwareDownloadCompleted);
+            }
+        }
+
+        private void CleanUpFirmwareFiles()
+        {
+            if (File.Exists(DownloadPath))
+            {
+                try
+                {
+                    File.Delete(DownloadPath);
+                }
+                catch (Exception e)
+                {
+                    MessageBox.Show("Unable to clear old firmware download. Are the file(s) in use?");
+                }
+            }
+
+            if (Directory.Exists(unzipFolderPath))
+            {
+                try
+                {
+                    Directory.Delete(unzipFolderPath, true);
+                }
+                catch (Exception e)
+                {
+                    MessageBox.Show("Unable to clear old firmware download. Are the file(s) in use?");
+                }
             }
         }
 
