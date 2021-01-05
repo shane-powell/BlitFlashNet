@@ -1,5 +1,7 @@
 # BlitFlashNet
 
+![alt text](/Images/Untitled.png "Interface")
+
 Windows App for updating and flashing 32Blit firmware.
 
 Requires .Net5. and DfuSeDemo installed to its default location.
