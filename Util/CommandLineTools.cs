@@ -19,7 +19,7 @@ namespace BlitFlashNet.Util
             this.processCompletedDelegate = processCompletedDelegate;
         }
 
-        internal void RunCommandLineApp(string command, string arguments)
+        internal void RunCommandLineApp(string command, string arguments, Action commandCompletedCallback)
         {
             Process p = new Process();
             p.StartInfo.RedirectStandardOutput = true;
@@ -41,8 +41,14 @@ namespace BlitFlashNet.Util
             p.OutputDataReceived += OnDataReceived;
             // Eventhandler for error
             p.ErrorDataReceived += OnErrorDataReceived;
-            // Eventhandler wich fires when exited
-            p.Exited += OnExited;
+
+            // Fire when command has completed.
+            p.Exited += (s, e) =>
+            {
+                this.processCompletedDelegate?.Invoke();
+                commandCompletedCallback?.Invoke();
+            };
+
             // Starts the process
             p.Start();
 
@@ -57,11 +63,6 @@ namespace BlitFlashNet.Util
         private void OnErrorDataReceived(object sender, DataReceivedEventArgs e)
         {
             this.processUpdateDelegate?.Invoke($"{Environment.NewLine}{e.Data}");
-        }
-
-        private void OnExited(object sender, System.EventArgs e)
-        {
-            this.processCompletedDelegate?.Invoke();
         }
     }
 }

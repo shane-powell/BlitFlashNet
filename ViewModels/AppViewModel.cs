@@ -202,7 +202,7 @@ namespace BlitFlashNet.ViewModels
 
             this.FlashFirmwareCommand = new RelayCommand(this.FlashFirmware);
 
-            this.commandLineTools = new CommandLineTools(this.ProcessCommandLineMessage, this.ProcessCommandLineFinished);
+            this.commandLineTools = new CommandLineTools(this.ProcessCommandLineMessage, null);
 
             //GetLatestFirmwareAsync();
             GetAllFirmwareAsync();
@@ -331,6 +331,8 @@ namespace BlitFlashNet.ViewModels
         {
             var blitFlashPath = $@"{Environment.CurrentDirectory }\bin\firmware-update-{release.TagName}.blit";
 
+            var launcherPath = $@"{Environment.CurrentDirectory }\bin\launcher.blit";
+
             if ((selectedFlashTool == FlashTool.DfuSe && File.Exists(dfuPath)) || selectedFlashTool == FlashTool.BlitTool && File.Exists(blitFlashPath))
             {
                 try
@@ -342,23 +344,42 @@ namespace BlitFlashNet.ViewModels
                     switch (SelectedFlashTool)
                     {
                         case FlashTool.BlitTool:
-                            this.commandLineTools.RunCommandLineApp("cmd.exe", $@"/c 32blit flash flash --file {blitFlashPath}");
+
+                            // If the launcher exists then flash it first.
+                            if (File.Exists(launcherPath))
+                            {
+                                this.commandLineTools.RunCommandLineApp("cmd.exe", $@"/c 32blit flash flash --file {launcherPath}",
+                                    () =>
+                                    {
+                                        try
+                                        {
+                                            this.commandLineTools.RunCommandLineApp("cmd.exe", $@"/c 32blit flash flash --file {blitFlashPath}", this.ProcessCommandLineFinished);
+                                        }
+                                        catch (Exception e)
+                                        {
+                                            MessageBox.Show(e.Message);
+                                            this.InterfaceEnabled = true;
+                                        }
+                                    });
+                            }
+                            else
+                            {
+                                // Flash the firmware.
+                                this.commandLineTools.RunCommandLineApp("cmd.exe", $@"/c 32blit flash flash --file {blitFlashPath}", this.ProcessCommandLineFinished);
+                            }
+
+                            
                             break;
                         case FlashTool.DfuSe:
-                            this.commandLineTools.RunCommandLineApp(dFusePath, $@" -c -d --fn ""{dfuPath}""");
+                            this.commandLineTools.RunCommandLineApp(dFusePath, $@" -c -d --fn ""{dfuPath}""", this.ProcessCommandLineFinished);
                             break;
                     }
                 }
                 catch (Exception e)
                 {
                     MessageBox.Show(e.Message);
-                }
-                finally
-                {
                     this.InterfaceEnabled = true;
                 }
-
-
             }
             else
             {
@@ -375,6 +396,7 @@ namespace BlitFlashNet.ViewModels
         private void ProcessCommandLineFinished()
         {
             MessageBox.Show("Firmware upload complete");
+            this.InterfaceEnabled = true;
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
