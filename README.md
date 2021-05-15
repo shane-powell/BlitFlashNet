@@ -1,5 +1,7 @@
 # BlitFlashNet
 
+![badge](https://github.com/shane-powell/BlitFlashNet/actions/workflows/dotnet.yml/badge.svg)
+
 ![alt text](/Images/Untitled.png "Interface")
 
 Windows App for updating and flashing 32Blit firmware.
