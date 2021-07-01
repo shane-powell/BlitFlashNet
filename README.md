@@ -6,7 +6,9 @@
 
 Windows App for updating and flashing 32Blit firmware.
 
-Requires .Net5. and DfuSeDemo installed to its default location.
+Requires .Net5.
+
+DfuSeDemo needs to be installed to its default location for the DfuSe option.
 
 Requires 32blit tools. `pip install 32blit`
 
